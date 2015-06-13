@@ -10,23 +10,17 @@ using Ime.Core;
 namespace Ime.Converter {
     public class Bigram : IConverter {
         public class Freqs {
-            public Dictionary<string, int> One =
-                new Dictionary<string, int>();
+            public Dictionary<Word, int> One =
+                new Dictionary<Word, int>();
 
-            public Dictionary<Tuple<string, string>, int> Two =
-                new Dictionary<Tuple<string, string>, int>();
+            public Dictionary<Tuple<Word, Word>, int> Two =
+                new Dictionary<Tuple<Word, Word>, int>();
         }
 
         readonly Freqs freqs;
         readonly int freqOneSum;
+        readonly int freqTwoSum;
         readonly int numVocabs;
-
-        // TODO fix arbitrary smoothing coeffs
-        Dictionary<string, double> param = new Dictionary<string, double> {
-            { "lam2", 0.99 },
-            { "lam1", 0.009 },
-            { "lam0", 0.001 },
-        };
 
         Dictionary<T, int> Zip2Dict<T>(
             string zipFile,
@@ -46,19 +40,34 @@ namespace Ime.Converter {
             });
         }
 
-        public Bigram(string uniFreqZip, string biFreqZip) {
+        Word Tok2Word(string tok) {
+            var xs = tok.Split('/');
+            return new Word { 
+                Chars = xs[0], 
+                Reading = xs.Length == 1 ? "" : xs[1] 
+            };
+        }
+
+        public Bigram(string unigramFile, string bigramFile) {
             this.freqs = new Freqs {
-                One = Zip2Dict(uniFreqZip, line => {
-                    var toks = line.Split(' ');
-                    return Tuple.Create(toks[0], int.Parse(toks[1]));
+                One = Zip2Dict(unigramFile, line => {
+                    var toks = line.Trim().Split(' ');
+                    var n = int.Parse(toks[0]);
+                    var x = Tok2Word(toks[1]);
+                    return Tuple.Create(x, n);
                 }),
-                Two = Zip2Dict(biFreqZip, line => {
+                Two = Zip2Dict(bigramFile, line => {
                     var toks = line.Split(' ');
-                    var x = Tuple.Create(toks[0], toks[1]);
-                    return Tuple.Create(x, int.Parse(toks[2]));
+                    var n = int.Parse(toks[0]);
+                    var x = Tuple.Create(
+                        Tok2Word(toks[1]), 
+                        Tok2Word(toks[2]) 
+                    );
+                    return Tuple.Create(x, n);
                 }),
             };
             this.freqOneSum = this.freqs.One.Values.Sum();
+            this.freqTwoSum = this.freqs.Two.Values.Sum();
             this.numVocabs = this.freqs.One.Keys.Count();
         }
 
@@ -68,21 +77,17 @@ namespace Ime.Converter {
         }
 
         // calculates P(curr|prev)
-        double CalcProb(string curr, string prev) {
-            // using liniear interpolation
-            // P(wi|wi-1) = λPml(wi|wi-1) + λPml(wi) + λ1/V    // V = # of vocabularies
+        double CalcProb(Word curr, Word prev) {
             var c2 = SafeGet(this.freqs.Two, Tuple.Create(prev, curr));
-            var c1 = SafeGet(this.freqs.One, curr);
-            var p2 = c1 == 0.0 ? 0.0 : c2 / c1;
-            var p1 = c1 / this.freqOneSum;
-            var p0 = 1.0 / this.numVocabs;
+            var c1 = SafeGet(this.freqs.One, prev);
 
-            var prob = 
-                this.Param["lam2"] * p2 
-                + this.Param["lam1"] * p1 
-                + this.Param["lam0"] * p0;
+            var penalty = this.freqOneSum / c1;
+            var denomi = c1 + penalty; 
+            
+            var prob = c1 == 0.0 ? 0.0 : c2 / denomi;
+            var missingWordCoeff = +1.0 / this.freqOneSum;
 
-            return prob;
+            return prob + missingWordCoeff;
         }
 
         // calculate node probs and set prev flags
@@ -101,7 +106,7 @@ namespace Ime.Converter {
 
                     foreach (var prev in prevs) {
                         var curr = nd;
-                        var prob = CalcProb(curr.Word.Chars, prev.Word.Chars);
+                        var prob = CalcProb(curr.Word, prev.Word);
                         var val = prev.Val + prob;
                         if (val > bestVal) {
                             bestVal = val;
@@ -114,7 +119,7 @@ namespace Ime.Converter {
             }
         }
 
-        Words RunViterviBwd(WordGraph.T wg) { 
+        Words RunViterbiBwd(WordGraph.T wg) { 
             var nd = wg.Eos;
             var xs = new LinkedList<Word>();
 
@@ -128,13 +133,9 @@ namespace Ime.Converter {
 
         public Words Convert(WordGraph.T wg) {
             RunViterbiFwd(wg);
-            var words = RunViterviBwd(wg);
+            var words = RunViterbiBwd(wg);
 
             return words;
-        }
-
-        public Dictionary<string, double> Param {
-            get { return param; }
         }
     }
 }

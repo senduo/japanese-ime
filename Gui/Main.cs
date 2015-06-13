@@ -20,26 +20,16 @@ namespace Ime.Gui {
 
         async void InitApiAsync() {
             slStatus.Text = "Loading Dictionary and Freq Files...";
-            foreach(var c in new Control[] { txtInput, txtLam2, txtLam1, txtLam0 }) 
-                c.Enabled = false;
+            txtInput.Enabled = false;
             
             await Task.Run(() => {
                 const string Dir = @"..\..\..\Resources\";
-                this.api = new Api(
-                    Dir + "naist-jdic-utf8.zip",
-                    Dir + "unigram-freq.zip",
-                    Dir + "bigram-freq.zip"
-                );
+                this.api = new Api(Dir + "1-gram.zip", Dir + "2-gram.zip");
             });
-
-            txtLam2.Text = api.BigramParams["lam2"].ToString();
-            txtLam1.Text = api.BigramParams["lam1"].ToString();
-            txtLam0.Text = api.BigramParams["lam0"].ToString();
 
             txtInput.Text = "";
             slStatus.Text = "Ready.";
-            foreach (var c in new Control[] { txtInput, txtLam2, txtLam1, txtLam0 })
-                c.Enabled = true;
+            txtInput.Enabled = true;
             txtInput.Focus();
         }
 
@@ -55,35 +45,10 @@ namespace Ime.Gui {
                 slStatus.Text = s.ErrMsg;
                 return;
             }
-            api.BigramParams["lam2"] = double.Parse(txtLam2.Text);
-            api.BigramParams["lam1"] = double.Parse(txtLam1.Text);
-            api.BigramParams["lam0"] = double.Parse(txtLam0.Text);
-
             var wg = api.BuildWordGraph(s.Val);
             var res = api.ConvertByBigram(wg.Val);
             txtResult.Text = res.Val.ToString();
             slStatus.Text = "";
-        }
-
-        void HandleParamChange(TextBox tb, string paramName) {
-            double x;
-            if (!double.TryParse(tb.Text, out x) || x < 0.0 || x > 1.0) {
-                tb.Text = api.BigramParams[paramName].ToString();
-                return;
-            }
-            txtInput_TextChanged(null, null);
-        }
-
-        private void txtLam2_TextChanged(object sender, EventArgs e) {
-            HandleParamChange(txtLam2, "lam2");
-        }
-
-        private void txtLam1_TextChanged(object sender, EventArgs e) {
-            HandleParamChange(txtLam1, "lam1");
-        }
-
-        private void txtLam0_TextChanged(object sender, EventArgs e) {
-            HandleParamChange(txtLam0, "lam0");
         }
     }
 }

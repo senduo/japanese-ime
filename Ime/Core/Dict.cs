@@ -54,14 +54,16 @@ namespace Ime.Core {
             var lines = new List<Word>();
             string line;
             while((line = sr.ReadLine()) != null) {
-                var toks = line.Split(',');
+                var toks = line.Split(' ');
+                if (toks.Length != 2 
+                    || (toks = toks[1].Split('/')).Length != 2) 
+                    continue;
                 lines.Add(new Word {
                     Chars = toks[0],
-                    Reading = toks[11],
+                    Reading = toks[1],
                 });
             }
-            // with only 0th and 11th used, there are duplicate entries
-            return lines.Distinct().ToArray(); 
+            return lines.ToArray(); 
         }
     }
 }

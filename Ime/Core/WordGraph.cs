@@ -23,8 +23,12 @@ namespace Ime.Core {
             }
         }
 
-        static readonly Node Bos = new Node { Word = new Word { Chars = Const.BOS } };
-        static readonly Node Eos = new Node { Word = new Word { Chars = Const.EOS } };
+        static readonly Node Bos = new Node { 
+            Word = new Word { Chars = Const.BOS, Reading = "" } 
+        };
+        static readonly Node Eos = new Node {
+            Word = new Word { Chars = Const.EOS, Reading = "" } 
+        };
 
         static SortedDictionary<int, List<Node>> GenEndLocMap(string s, Dict.Node dict) {
             var m = new SortedDictionary<int, List<Node>>();
@@ -50,7 +54,7 @@ namespace Ime.Core {
         }
 
         public static T Build(string s, Dict.Node dict) {
-            return new T {
+           return new T {
                 SrcStr = s,
                 Bos = Bos,
                 Eos = Eos,

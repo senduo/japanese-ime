@@ -7,6 +7,6 @@ using System.Threading.Tasks;
 namespace Ime {
     public class Const {
         public const string BOS = "<s>";
-        public const string EOS = "</s>";
+        public const string EOS = "<e>";
     }
 }

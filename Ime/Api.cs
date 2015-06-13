@@ -23,12 +23,12 @@ namespace Ime {
         Dict.T dict;
         Bigram bigram;
         
-        public Api(string dictFile, string uniFreqFile, string biFreqFile) {
-            if (!File.Exists(dictFile))
-                throw new Exception(string.Format("dict file '{0}' is missing", dictFile));
+        public Api(string unigramFile, string bigramFile) {
+            if (!File.Exists(unigramFile))
+                throw new Exception(string.Format("1-gram file '{0}' is missing", unigramFile));
 
-            this.dict = Dict.Build(dictFile);
-            this.bigram = new Bigram(uniFreqFile, biFreqFile);
+            this.dict = Dict.Build(unigramFile);
+            this.bigram = new Bigram(unigramFile, bigramFile);
         }
 
         Result<T> Try<T>(Func<T> f) {
@@ -48,7 +48,7 @@ namespace Ime {
                 var expr = @"^[\p{IsHiragana}|\p{IsKatakana}]*$";
                 if (!Regex.IsMatch(s, expr))
                     throw new Exception("Expected hira/katakana, but got: " + s);
-                return Strings.StrConv(s, VbStrConv.Katakana, 0x411);
+                return Strings.StrConv(s, VbStrConv.Hiragana, 0x411);
             });
         }
 
@@ -58,10 +58,6 @@ namespace Ime {
 
         public Result<Words> ConvertByBigram(WordGraph.T wg) {
             return Try(() => bigram.Convert(wg));
-        }
-
-        public Dictionary<string, double> BigramParams {
-            get { return bigram.Param; }
         }
     }
 }
